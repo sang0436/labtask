@@ -1,52 +1,30 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-import tensorflow as tf
-from tensorflow.keras import datasets, layers, models
-import matplotlib.pyplot as plt
-import numpy as np
+from tensorflow.keras.datasets import cifar10
+from tensorflow.keras import models
+from tensorflow.keras import layers
 
-(train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
-# CIFAR-10 dataset 다운로드
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()  # cifar-10 dataset 가져오기
 
-class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer',
-               'dog', 'frog', 'horse', 'ship', 'truck']
+class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 
-# 데이터 정보
-print("Training data")
-print("Number of examples : ", train_images.shape[0])
-print("Number of channels : ", train_images.shape[3])
-print("Image size : ", train_images.shape[1], train_images.shape[2])
-print("-----")
-print("Test data")
-print("Number of examples : ", test_images.shape[0])
-print("Number of channels : ", test_images.shape[3])
-print("Image size : ", test_images.shape[1], test_images.shape[2])
-print("-----")
+print("Train samples : ", x_train.shape, y_train.shape)  # 50000개의 32*32, 3개 채널의 train sample
+print("Test samples : ", x_test.shape, y_test.shape)  # 10000개의 32*32, 3개 채널의 test sample
 
-print("mean before normalization : ", np.mean(train_images))
-print("std before normalization : ", np.std(train_images))
+x_train = x_train / 255.0
+x_test = x_test / 255.0  # 0~255의 값을 갖는 픽셀값을 0~1로 갖도록 조정
 
-mean = [0, 0, 0]
-std = [0, 0, 0]
-new_train_images = np.ones(train_images.shape)
-new_test_images = np.ones(test_images.shape)
+# CNN 모델 구현
+model = models.Sequential()
+model.add(layers.Conv2D(32, (3, 3), padding='same', activation='relu', input_shape=(32, 32, 3)))
+model.add(layers.MaxPool2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), padding='same', activation='relu'))
+model.add(layers.MaxPool2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), padding='same', activation='relu'))
+model.add(layers.Flatten())
+model.add(layers.Dense(64, activation='relu'))
+model.add(layers.Dense(10, activation='softmax'))
 
-for i in range(3):  # 채널이 3개이므로 각 채널마다의 평균, 표준편차 (train set 만)
-    mean[i] = np.mean(train_images[:, :, :, i])
-    std[i] = np.std(train_images[:, :, :, i])
+model.compile(optimizer='SGD', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.fit(x_train, y_train, epochs=10)
 
-for i in range(3):  # 정규화 작업 (train set, test set 모두)
-    new_train_images[:, :, :, i] = train_images[:, :, :, i] - mean[i]
-    new_train_images[:, :, :, i] = new_train_images[:, :, :, i] / std[i]
-    new_test_images[:, :, :, i] = test_images[:, :, :, i] - mean[i]
-    new_test_images[:, :, :, i] = new_test_images[:, :, :, i] / std[i]
-
-train_images = new_train_images
-test_images = new_test_images
-
-print("-----")
-print("mean after normalization : ", np.mean(train_images))
-print("std after normalization : ", np.std(train_images))
-
-
-
-
+test_loss, test_acc = model.evaluate(x_test, y_test)
+print("Test accuracy : ", test_acc)
