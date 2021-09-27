@@ -3,8 +3,8 @@ from tensorflow.keras.utils import to_categorical
 from keras_preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 from tensorflow.keras.datasets import cifar10
-from tensorflow.keras import models
-from tensorflow.keras import layers
+from tensorflow.keras import models, layers
+from tensorflow.keras.layers import BatchNormalization
 from tensorflow import keras
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -73,31 +73,45 @@ y_train = to_categorical(y_train, 10)
 y_val = to_categorical(y_val, 10)
 y_test = to_categorical(y_test, 10)
 
-epochs = 100
+epochs = 200
 
 # 훈련 모델
 model = models.Sequential()
-model.add(layers.Conv2D(32, (3, 3), padding='same', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu',
+model.add(layers.Conv2D(32, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu',
                         input_shape=(32, 32, 3)))
-model.add(layers.Dropout(0.3))
+model.add(BatchNormalization())
+
+model.add(layers.Conv2D(32, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+model.add(BatchNormalization())
 model.add(layers.MaxPool2D((2, 2)))
-model.add(layers.Conv2D(64, (3, 3), padding='same', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+
+model.add(layers.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+model.add(BatchNormalization())
+
+model.add(layers.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+model.add(BatchNormalization())
 model.add(layers.MaxPool2D((2, 2)))
-model.add(layers.Conv2D(64, (3, 3), padding='same', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+
+model.add(layers.Conv2D(128, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+model.add(BatchNormalization())
 model.add(layers.MaxPool2D((2, 2)))
-model.add(layers.Conv2D(32, (3, 3), padding='same', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+
+model.add(layers.Conv2D(128, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+model.add(BatchNormalization())
 model.add(layers.MaxPool2D((2, 2)))
+
 model.add(layers.Flatten())
-model.add(layers.Dense(32, kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+
+model.add(layers.Dense(64, kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
 model.add(layers.Dropout(0.5))
-model.add(layers.Dense(10, kernel_regularizer=keras.regularizers.l2(0.001), activation='softmax'))
+model.add(layers.Dense(10, kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='softmax'))
 
 model.summary()
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
               loss='categorical_crossentropy', metrics=['accuracy'])
 history = model.fit(x_train, y_train, batch_size=128, epochs=epochs, validation_data=(x_val, y_val))
 test_loss, test_acc = model.evaluate(x_test, y_test)
-print("Test accuracy : ", test_acc)  # Test accuracy : 0.7760
+print("Test accuracy : ", test_acc)  # Test accuracy : 0.8187
 
 acc = history.history['accuracy']
 val_acc = history.history['val_accuracy']
