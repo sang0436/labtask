@@ -1,34 +1,34 @@
 import numpy as np
-from tensorflow.keras.utils import to_categorical
 from keras_preprocessing.image import ImageDataGenerator
 from matplotlib import pyplot as plt
 from tensorflow.keras.datasets import cifar10
-from tensorflow.keras import models, layers
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow import keras
-import tensorflow as tf
+from tensorflow.keras import models
+from tensorflow.keras import layers
 from sklearn.model_selection import train_test_split
+from tensorflow import keras
+from tensorflow.keras.utils import to_categorical
 
-# cifar-10 dataset 가져오기
-(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()  # cifar-10 dataset 가져오기
 class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 
 # 이미지 시각화
-for i in range(1, 11):
-    ax = plt.subplot(2, 5, i)
-    ax.imshow(x_train[i])
-    ax.set_title(np.array(class_names)[y_train[i]])
+plt.figure(figsize=[10, 10])
+for i in range(25):    # 1~25번째 이미지
+  plt.subplot(5, 5, i+1)
+  plt.xticks([])
+  plt.yticks([])
+  plt.grid(False)
+  plt.imshow(x_train[i], cmap=plt.cm.binary)
+  plt.xlabel(class_names[y_train[i][0]])
 plt.show()
 
-# valitaion set 만들기
+# validation set 만들기
 x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, stratify=y_train, random_state=1)
 
-# sample 정보
-print("Train samples : ", x_train.shape, y_train.shape)
-print("Validation samples : ", x_val.shape, y_val.shape)
-print("Test samples : ", x_test.shape, y_test.shape)
+print("Train samples : ", x_train.shape, y_train.shape)  # 40000개의 32*32, 3개 채널의 train sample
+print("Validation samples : ", x_val.shape, y_val.shape)  # 10000개의 32*32, 3개 채널의 validation sample
+print("Test samples : ", x_test.shape, y_test.shape)  # 10000개의 32*32, 3개 채널의 test sample
 
-# 데이터 늘리기
 gen = ImageDataGenerator(rotation_range=20, shear_range=0.2,
                          width_shift_range=0.2, height_shift_range=0.2,
                          horizontal_flip=True)
@@ -45,73 +45,73 @@ s = np.arange(x_train.shape[0])
 np.random.shuffle(s)
 x_train = x_train[s]
 y_train = y_train[s]
-
 print("after augmented (train set) : ", x_train.shape, y_train.shape)
 
-# 정규화
-mean = [0, 0, 0]
-std = [0, 0, 0]
-new_x_train = np.ones(x_train.shape)
-new_x_val = np.ones(x_val.shape)
-new_x_test = np.ones(x_test.shape)
-for i in range(3):
-    mean[i] = np.mean(x_train[:, :, :, i])
-    std[i] = np.std(x_train[:, :, :, i])
-for i in range(3):
-    new_x_train[:, :, :, i] = x_train[:, :, :, i] - mean[i]
-    new_x_train[:, :, :, i] = new_x_train[:, :, :, i] / std[i]
-    new_x_val[:, :, :, i] = x_val[:, :, :, i] - mean[i]
-    new_x_val[:, :, :, i] = new_x_val[:, :, :, i] / std[i]
-    new_x_test[:, :, :, i] = x_test[:, :, :, i] - mean[i]
-    new_x_test[:, :, :, i] = new_x_test[:, :, :, i] / std[i]
-x_train = new_x_train
-x_val = new_x_val
-x_test = new_x_test
+# 픽셀값 정규화
+x_train = x_train.astype('float32')
+x_val = x_val.astype('float32')
+x_test = x_test.astype('float32')
+x_train = x_train / 255
+x_val = x_val / 255
+x_test = x_test / 255
 
 # 원 핫 인코딩
 y_train = to_categorical(y_train, 10)
 y_val = to_categorical(y_val, 10)
 y_test = to_categorical(y_test, 10)
 
-epochs = 200
+epochs = 100
 
-# 훈련 모델
+# CNN 모델 구현
 model = models.Sequential()
-model.add(layers.Conv2D(32, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu',
-                        input_shape=(32, 32, 3)))
-model.add(BatchNormalization())
-
-model.add(layers.Conv2D(32, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
-model.add(BatchNormalization())
+# Conv layer 1
+model.add(layers.Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3)))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
+# Conv layer 2
+model.add(layers.Conv2D(32, (3, 3), padding='same'))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
+# Pooling layer 1
 model.add(layers.MaxPool2D((2, 2)))
-
-model.add(layers.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
-model.add(BatchNormalization())
-
-model.add(layers.Conv2D(64, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
-model.add(BatchNormalization())
+model.add(layers.Dropout(0.3))
+# Conv layer 3
+model.add(layers.Conv2D(64, (3, 3), padding='same'))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
+# Conv layer 4
+model.add(layers.Conv2D(64, (3, 3), padding='same'))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
+# Pooling layer 2
 model.add(layers.MaxPool2D((2, 2)))
-
-model.add(layers.Conv2D(128, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
-model.add(BatchNormalization())
+model.add(layers.Dropout(0.3))
+# Conv layer 5
+model.add(layers.Conv2D(128, (3, 3), padding='same'))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
+# Conv layer 6
+model.add(layers.Conv2D(128, (3, 3), padding='same'))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
+# Pooling layer 3
 model.add(layers.MaxPool2D((2, 2)))
-
-model.add(layers.Conv2D(128, (3, 3), padding='same', kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
-model.add(BatchNormalization())
-model.add(layers.MaxPool2D((2, 2)))
-
+model.add(layers.Dropout(0.3))
+# Flat
 model.add(layers.Flatten())
-
-model.add(layers.Dense(64, kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='relu'))
+# Dense layer 1
+model.add(layers.Dense(128))
+model.add(layers.BatchNormalization())
+model.add(layers.Activation('relu'))
 model.add(layers.Dropout(0.5))
-model.add(layers.Dense(10, kernel_initializer='he_normal', kernel_regularizer=keras.regularizers.l2(0.001), activation='softmax'))
+# Dense layer 2
+model.add(layers.Dense(10, activation='softmax'))
 
 model.summary()
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-              loss='categorical_crossentropy', metrics=['accuracy'])
-history = model.fit(x_train, y_train, batch_size=128, epochs=epochs, validation_data=(x_val, y_val))
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+history = model.fit(x_train, y_train, epochs=epochs, batch_size=64, validation_data=(x_val, y_val))
 test_loss, test_acc = model.evaluate(x_test, y_test)
-print("Test accuracy : ", test_acc)  # Test accuracy : 0.8187
+print("Test accuracy : ", test_acc)
 
 acc = history.history['accuracy']
 val_acc = history.history['val_accuracy']
@@ -139,10 +139,14 @@ plt.ylabel('Loss')
 plt.title('Training and Validation Loss')
 plt.show()
 
-# test
-plt.rcParams["figure.figsize"] = (2, 2)
-for i in range(10):
-    output = model.predict(x_test[i].reshape(1, 32, 32, 3))
-    plt.imshow(x_test[i].reshape(32, 32, 3))
-    print("예측 : " + class_names[np.argmax(output)] + "/ 정답 : " + class_names[np.argmax(y_test[i])])
-    plt.show()
+# Test
+predict = model.predict(x_test)
+predict_classes = np.argmax(predict, axis=1)
+fig, axes = plt.subplots(5, 5, figsize=(15, 15))
+axes = axes.ravel()
+for i in np.arange(0, 25):
+    axes[i].imshow(x_test[i])
+    axes[i].set_title("True: %s \nPredict: %s" % (class_names[np.argmax(y_test[i])], class_names[predict_classes[i]]))
+    axes[i].axis('off')
+    plt.subplots_adjust(wspace=1)
+
